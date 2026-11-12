@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- rounded "caption bubble" -->
+    <path
+        android:fillColor="#FF00B7FF"
+        android:pathData="M30,34 L78,34 Q86,34 86,42 L86,64 Q86,72 78,72 L58,72 L48,84 L48,72 L30,72 Q22,72 22,64 L22,42 Q22,34 30,34 Z" />
+    <!-- two caption lines -->
+    <path
+        android:fillColor="#FF07080A"
+        android:pathData="M32,46 L76,46 Q78,46 78,48 L78,50 Q78,52 76,52 L32,52 Q30,52 30,50 L30,48 Q30,46 32,46 Z" />
+    <path
+        android:fillColor="#FFF2F4F7"
+        android:pathData="M32,57 L62,57 Q64,57 64,59 L64,61 Q64,63 62,63 L32,63 Q30,63 30,61 L30,59 Q30,57 32,57 Z" />
+</vector>

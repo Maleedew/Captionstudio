@@ -1,0 +1,98 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to publish the APK on the Releases page
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode release keystore (optional)
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "Release keystore decoded -> APK will be signed with your key."
+          else
+            echo "No KEYSTORE_BASE64 secret -> APK will be signed with the debug key (fine for testing)."
+          fi
+
+      - name: Build release APK
+        shell: bash
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -o pipefail
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --stacktrace --console=plain 2>&1 | tee build.log
+
+      - name: Summarise build errors
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "### Build failed - first errors"
+            echo '```'
+            grep -E '^e: |ERROR:|AAPT: error|What went wrong|Execution failed' -A2 build.log | head -100 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^e: |ERROR:|AAPT: error' build.log | head -10 | while IFS= read -r l; do echo "::error::${l}"; done || true
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk dist/CaptionStudio.apk
+          ls -la dist
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CaptionStudio-apk
+          path: dist/CaptionStudio.apk
+          if-no-files-found: error
+
+      # A stable download link that always points to the newest build of the main branch:
+      # https://github.com/<user>/<repo>/releases/download/latest/CaptionStudio.apk
+      - name: Publish rolling "latest" release (branch builds)
+        if: github.ref_type == 'branch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          body: "Automatic build of commit ${{ github.sha }}."
+          files: dist/CaptionStudio.apk
+
+      - name: Attach APK to versioned release (tag builds)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/CaptionStudio.apk
