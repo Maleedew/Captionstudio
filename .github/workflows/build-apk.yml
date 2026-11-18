@@ -23,8 +23,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # The GitHub runner already ships the Android SDK. (android-actions/setup-android@v3 tries to install the
+      # removed 'tools' package and fails with "Failed to find package 'tools'", so it is not used.)
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          SDKM="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)"
+          echo "Using $SDKM"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-35" "build-tools;34.0.0"
 
       - name: Set up Gradle (cache)
         uses: gradle/actions/setup-gradle@v4
